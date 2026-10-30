@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>转子冲片重量计算器</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --border:#2c313c;
+    --text:#e6e8ec; --muted:#9aa3b2; --accent:#7f77dd; --accent2:#1d9e75;
+    --danger:#e24b4a; --inputbg:#0c0e12;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f4f5f7; --panel:#ffffff; --panel2:#f0f2f5; --border:#d8dce3;
+      --text:#1d2129; --muted:#5f6675; --accent:#534ab7; --accent2:#0f6e56;
+      --danger:#a32d2d; --inputbg:#ffffff;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+  .wrap{max-width:1080px;margin:0 auto;padding:20px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .card h2{font-size:15px;margin:0 0 12px;font-weight:600}
+  label{display:block;margin:10px 0 4px;color:var(--muted);font-size:13px}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row > div{flex:1;min-width:120px}
+  input,select,textarea{width:100%;background:var(--inputbg);border:1px solid var(--border);
+    color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit}
+  textarea{font-family:ui-monospace,Menlo,Consolas,monospace;resize:vertical;min-height:90px}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+  .seg-row{display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+  .seg-row select,.seg-row input{width:auto;flex:1;min-width:60px}
+  .seg-row .lab{font-size:12px;color:var(--muted);min-width:54px}
+  button{background:var(--accent);color:#fff;border:none;border-radius:8px;
+    padding:8px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+  button.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+  button.danger{background:transparent;border:1px solid var(--danger);color:var(--danger)}
+  .btn-sm{padding:5px 10px;font-size:12px}
+  .hole-row{display:flex;gap:6px;margin-bottom:8px}
+  .hole-row input{flex:1}
+  .hole-head{display:flex;gap:6px;margin-bottom:6px;font-size:12px;color:var(--muted)}
+  .hole-head span{flex:1}
+  .hole-head span:last-child{flex:0 0 44px;text-align:center}
+  .kw-row{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center}
+  .kw-row > *{flex:1;min-width:64px}
+  .kw-row select{flex:0 0 auto;min-width:96px}
+  .result{background:var(--panel2);border-radius:10px;padding:14px;margin-top:6px}
+  .result .item{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--border)}
+  .result .item:last-child{border-bottom:none}
+  .result .v{font-weight:600;color:var(--accent2);font-variant-numeric:tabular-nums}
+  .big{font-size:22px;color:var(--accent)!important}
+  .preview{display:flex;justify-content:center;align-items:center;background:var(--panel2);
+    border-radius:10px;padding:10px;margin-top:10px}
+  .preview svg{width:100%;max-width:360px;height:auto}
+  .note{color:var(--muted);font-size:12px;margin-top:8px}
+  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--border);
+    border-radius:20px;padding:2px 10px;font-size:12px;color:var(--muted);margin-left:6px}
+  .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  .tab{background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+    padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+  .tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .hide{display:none}
+  code{background:var(--panel2);padding:1px 5px;border-radius:5px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>转子冲片重量计算器</h1>
+  <div class="sub">净面积 = 外圆 − 轴孔 − Z×槽 − Σ孔 ｜ 单重 = 净面积×厚×ρ ｜ 适配半闭口平底异形槽（分段法）</div>
+
+  <!-- 剖面预览（置顶） -->
+  <div class="card" style="margin-bottom:16px">
+    <h2>剖面预览 <span class="pill">外圆 · 轴孔 · 槽(Z个) · 键槽 · 孔 实时显示</span></h2>
+    <div class="preview" style="margin-top:0"><div id="svgBox"></div></div>
+    <div class="note">红色缺口＝槽（共 Z 个）与内孔键槽；灰色细线＝轴孔与各类通风/平衡/铆钉孔。任意尺寸改动即时重绘。</div>
+  </div>
+
+  <div class="grid">
+    <!-- 左列：基础参数 -->
+    <div class="card">
+      <h2>基础参数</h2>
+      <div class="row">
+        <div><label>外径 D (mm)</label><input id="D" type="number" value="169" step="0.1"></div>
+        <div><label>轴孔 d (mm)</label><input id="d" type="number" value="45" step="0.1"></div>
+      </div>
+      <div class="row">
+        <div><label>单张厚度 t (mm)</label><input id="t" type="number" value="0.5" step="0.01"></div>
+        <div><label>片数 N</label><input id="N" type="number" value="1" step="1"></div>
+      </div>
+      <div class="row">
+        <div>
+          <label>材料（密度 ρ g/cm³）</label>
+          <select id="mat">
+            <option value="7.65">50W600（7.65）</option>
+            <option value="7.65">35W1900（7.65）</option>
+            <option value="7.65">50W470（7.65）</option>
+            <option value="7.60">50W800（7.60）</option>
+            <option value="7.55">50W1300（7.55）</option>
+            <option value="custom">自定义…</option>
+          </select>
+        </div>
+        <div><label>自定义 ρ</label><input id="rho" type="number" value="7.65" step="0.01"></div>
+      </div>
+      <div class="row">
+        <div><label>叠压系数 K（0~1，可不填=1）</label><input id="K" type="number" value="1" step="0.01"></div>
+        <div><label>槽数 Z</label><input id="Z" type="number" value="16" step="1"></div>
+      </div>
+    </div>
+
+    <!-- 右列：槽型 -->
+    <div class="card">
+      <h2>槽型定义 <span class="pill">半闭口平底异形 → 用「分段」</span></h2>
+      <div class="tabs" id="tabs">
+        <div class="tab active" data-t="segment">分段（通用）</div>
+        <div class="tab" data-t="rect">矩形</div>
+        <div class="tab" data-t="trap">梯形</div>
+        <div class="tab" data-t="round">圆底</div>
+      </div>
+
+      <!-- 分段 -->
+      <div id="panel-segment">
+        <div class="note">自上而下拆段：矩形填「宽/高」，梯形填「上宽→下宽/高」。覆盖你这种半闭口外鼓平底槽。</div>
+        <div id="segList"></div>
+        <button class="ghost btn-sm" id="addSeg">+ 添加段</button>
+      </div>
+
+      <!-- 矩形 -->
+      <div id="panel-rect" class="hide">
+        <div class="row">
+          <div><label>槽宽 w (mm)</label><input id="r_w" type="number" value="6" step="0.1"></div>
+          <div><label>槽高 h (mm)</label><input id="r_h" type="number" value="27" step="0.1"></div>
+        </div>
+      </div>
+
+      <!-- 梯形 -->
+      <div id="panel-trap" class="hide">
+        <div class="row">
+          <div><label>上宽 b0</label><input id="t_b0" type="number" value="0.5" step="0.1"></div>
+          <div><label>下宽 b1</label><input id="t_b1" type="number" value="6.6" step="0.1"></div>
+          <div><label>高 h</label><input id="t_h" type="number" value="27" step="0.1"></div>
+        </div>
+      </div>
+
+      <!-- 圆底 -->
+      <div id="panel-round" class="hide">
+        <div class="row">
+          <div><label>槽口宽 b0</label><input id="rd_b0" type="number" value="2" step="0.1"></div>
+          <div><label>颈部高 h0</label><input id="rd_h0" type="number" value="2" step="0.1"></div>
+        </div>
+        <div class="row">
+          <div><label>身宽 b（底宽=2r）</label><input id="rd_b" type="number" value="8" step="0.1"></div>
+          <div><label>总高 h</label><input id="rd_h" type="number" value="20" step="0.1"></div>
+        </div>
+        <div class="note">底为半圆，半径 r = 身宽/2；扩张段高 = h − h0 − r（自动推算）</div>
+      </div>
+
+      <!-- 圆底已是最末模板；坐标法已移除 -->
+    </div>
+  </div>
+
+  <!-- 内孔键槽 -->
+  <div class="grid">
+    <div class="card">
+      <h2>内孔键槽 <span class="pill">从轴孔扣除 · 可多个</span></h2>
+      <label style="display:flex;align-items:center;gap:6px;margin:6px 0">
+        <input type="checkbox" id="kwOn" style="width:auto"> 启用键槽（开在轴孔内圆，向外挖入材料）
+      </label>
+      <div class="hole-head"><span>类型</span><span>角度(°)</span><span>尺寸(mm)</span><span></span></div>
+      <div id="kwList"></div>
+      <button class="ghost btn-sm" id="addKw">+ 添加键槽</button>
+      <div class="note">
+        可设<b>多个</b>键槽（如双键、花键段等），每个独立填类型 / 角度 / 尺寸：<br>
+        <b>平键槽</b>＝键宽 b × 键深 t（矩形缺口）；<b>梯形键槽</b>＝上宽 b1 → 下宽 b2 × 深 t。<br>
+        各键槽面积之和从净面积扣除，预览以红色缺口显示在轴孔边缘（角度=键槽中心相对圆心的方位，0°朝右、逆时针增大）。
+      </div>
+    </div>
+  </div>
+
+  <!-- 其他孔 + 结果 -->
+  <div class="grid" style="margin-top:16px">
+    <div class="card">
+      <h2>其他孔（平衡孔 / 通风孔 / 铆钉孔）</h2>
+      <div class="hole-head"><span>① 数量（个）：该类孔一共几个</span><span>② 直径（mm）：单个孔直径</span><span></span></div>
+      <div id="holeList"></div>
+      <button class="ghost btn-sm" id="addHole">+ 添加孔（再增一类）</button>
+      <div class="note">
+        每一行代表<b>一类</b>孔（如 6 个平衡孔、4 个通风孔、若干铆钉孔，分多行填）。<br>
+        <b>第①列「数量」</b>＝该类孔的总个数；<b>第②列「直径」</b>＝该类孔中<b>单个</b>孔的直径（同类孔按等径圆孔处理）。<br>
+        该类孔总面积 = 数量 × π × (直径/2)²，自动从冲片净面积中扣除。点「+ 添加孔」可再增一类不同直径的孔。
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>计算结果</h2>
+      <div class="result" id="result">
+        <div class="item"><span>单槽面积</span><span class="v" id="o_slot">—</span></div>
+        <div class="item"><span>键槽面积（内孔）</span><span class="v" id="o_kw">0.00 mm²</span></div>
+        <div class="item"><span>冲片净面积</span><span class="v" id="o_net">—</span></div>
+        <div class="item"><span>单张重量</span><span class="v" id="o_single">—</span></div>
+        <div class="item"><span>叠片总重（N×K）</span><span class="v big" id="o_total">—</span></div>
+      </div>
+      <div class="note" id="warn"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ---------- 分段槽型数据 ----------
+let segments = [
+  {type:'rect', w:0.5, h:1},
+  {type:'trap', w1:0.5, w2:6.6, h:15},
+  {type:'trap', w1:6.6, w2:3, h:11},
+];
+
+function renderSegs(){
+  const box = $('segList'); box.innerHTML='';
+  segments.forEach((s,i)=>{
+    const div = document.createElement('div'); div.className='seg-row';
+    const typeSel = `<select data-i="${i}" data-k="__type" style="flex:0 0 auto;min-width:64px">
+        <option value="rect"${s.type==='rect'?' selected':''}>矩形</option>
+        <option value="trap"${s.type==='trap'?' selected':''}>梯形</option>
+        <option value="round"${s.type==='round'?' selected':''}>圆底</option>
+      </select>`;
+    let fields='';
+    if(s.type==='rect'){
+      fields=`<input type="number" step="0.1" value="${s.w}" data-i="${i}" data-k="w" placeholder="宽">
+        <input type="number" step="0.1" value="${s.h}" data-i="${i}" data-k="h" placeholder="高">`;
+    } else if(s.type==='trap'){
+      fields=`<input type="number" step="0.1" value="${s.w1}" data-i="${i}" data-k="w1" placeholder="上宽">
+        <input type="number" step="0.1" value="${s.w2}" data-i="${i}" data-k="w2" placeholder="下宽">
+        <input type="number" step="0.1" value="${s.h}" data-i="${i}" data-k="h" placeholder="高">`;
+    } else {
+      fields=`<input type="number" step="0.1" value="${s.r}" data-i="${i}" data-k="r" placeholder="底半径">`;
+    }
+    div.innerHTML = typeSel + fields + `<button class="danger btn-sm" data-del="${i}">删</button>`;
+    box.appendChild(div);
+  });
+  box.querySelectorAll('select[data-k="__type"]').forEach(el=>{
+    el.addEventListener('change',e=>{
+      const i=+e.target.dataset.i, ty=e.target.value;
+      segments[i]={rect:{type:'rect',w:3,h:5},trap:{type:'trap',w1:3,w2:3,h:5},round:{type:'round',r:3}}[ty];
+      renderSegs(); compute();
+    });
+  });
+  box.querySelectorAll('input').forEach(el=>{
+    el.addEventListener('input',e=>{
+      const i=+e.target.dataset.i, k=e.target.dataset.k;
+      segments[i][k]=parseFloat(e.target.value)||0; compute();
+    });
+  });
+  box.querySelectorAll('[data-del]').forEach(b=>{
+    b.addEventListener('click',e=>{ segments.splice(+e.target.dataset.del,1); renderSegs(); compute(); });
+  });
+}
+$('addSeg').addEventListener('click',()=>{ segments.push({type:'trap',w1:3,w2:3,h:5}); renderSegs(); compute(); });
+
+// ---------- 其他孔 ----------
+let holes = [{n:0,d:0}];
+function renderHoles(){
+  const box=$('holeList'); box.innerHTML='';
+  holes.forEach((h,i)=>{
+    const div=document.createElement('div'); div.className='hole-row';
+    div.innerHTML=`<input type="number" step="1" value="${h.n}" placeholder="数量" data-i="${i}" data-k="n">
+      <input type="number" step="0.1" value="${h.d}" placeholder="直径mm" data-i="${i}" data-k="d">
+      <button class="danger btn-sm" data-hdel="${i}">删</button>`;
+    box.appendChild(div);
+  });
+  box.querySelectorAll('input').forEach(el=>{
+    el.addEventListener('input',e=>{const i=+e.target.dataset.i,k=e.target.dataset.k;holes[i][k]=parseFloat(e.target.value)||0;compute();});
+  });
+  box.querySelectorAll('[data-hdel]').forEach(b=>{b.addEventListener('click',e=>{holes.splice(+e.target.dataset.hdel,1);renderHoles();compute();});});
+}
+$('addHole').addEventListener('click',()=>{holes.push({n:4,d:10});renderHoles();compute();});
+
+// ---------- 槽型切换 ----------
+let slotType='segment';
+document.querySelectorAll('#tabs .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('#tabs .tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active'); slotType=t.dataset.t;
+    ['segment','rect','trap','round'].forEach(p=>$( 'panel-'+p).classList.add('hide'));
+    $('panel-'+slotType).classList.remove('hide'); compute();
+  });
+});
+
+// ---------- 几何：生成槽轮廓多边形（局部坐标：x切向, y自外圆面向内深度）----------
+function shoelace(pts){
+  let a=0; for(let i=0;i<pts.length;i++){const j=(i+1)%pts.length;a+=pts[i].x*pts[j].y-pts[j].x*pts[i].y;} return Math.abs(a)/2;
+}
+function slotPolygon(){
+  if(slotType==='rect'){
+    const w=+r_w.value,h=+r_h.value; return [{x:-w/2,y:0},{x:w/2,y:0},{x:w/2,y:h},{x:-w/2,y:h}];
+  }
+  if(slotType==='trap'){
+    const b0=+t_b0.value,b1=+t_b1.value,h=+t_h.value;
+    return [{x:-b0/2,y:0},{x:b0/2,y:0},{x:b1/2,y:h},{x:-b1/2,y:h}];
+  }
+  if(slotType==='round'){
+    const b0=+rd_b0.value,h0=+rd_h0.value,b=+rd_b.value,h=+rd_h.value;
+    const r=b/2;                      // 半圆底半径 = 身宽/2
+    const h1=Math.max(0,h-h0-r);
+    const yc=h0+h1;
+    let pts=[{x:-b0/2,y:0},{x:b0/2,y:0},{x:b0/2,y:h0},{x:b/2,y:yc}];
+    for(let a=0;a<=Math.PI+1e-9;a+=Math.PI/16){ pts.push({x:r*Math.cos(a), y:yc+r*Math.sin(a)}); }
+    pts.push({x:-b0/2,y:h0});
+    return pts;
+  }
+  // segment（支持 矩形/梯形/圆底 段，自上而下）
+  const straightRight=[], arcPts=[];
+  let y=0, prevBottom=0;
+  segments.forEach((s,idx)=>{
+    let topW = s.type==='rect'? s.w : s.type==='trap'? s.w1 : 2*(s.r||1);
+    if(idx>0 && Math.abs(topW-prevBottom)>1e-6){
+      straightRight.push({x:prevBottom/2,y:y},{x:topW/2,y:y}); // 宽度不一致时补过渡
+    }
+    if(s.type==='rect'){
+      straightRight.push({x:topW/2,y:y},{x:topW/2,y:y+s.h});
+      prevBottom=topW; y+=s.h;
+    } else if(s.type==='trap'){
+      straightRight.push({x:s.w1/2,y:y},{x:s.w2/2,y:y+s.h});
+      prevBottom=s.w2; y+=s.h;
+    } else { // round：半圆底，顶宽=2r（建议放最后一段）
+      const r=topW/2;
+      straightRight.push({x:topW/2,y:y});
+      for(let a=0;a<=Math.PI+1e-9;a+=Math.PI/16){ arcPts.push({x:r*Math.cos(a), y:y + r*Math.sin(a)}); }
+      prevBottom=0; y+=r;
+    }
+  });
+  if(arcPts.length && straightRight.length && Math.abs(arcPts[0].x-straightRight[straightRight.length-1].x)<1e-9 && Math.abs(arcPts[0].y-straightRight[straightRight.length-1].y)<1e-9) arcPts.shift();
+  const leftStraight = straightRight.slice().reverse().map(p=>({x:-p.x,y:p.y}));
+  if(leftStraight.length){
+    const last = arcPts.length? arcPts[arcPts.length-1] : straightRight[straightRight.length-1];
+    if(Math.abs(leftStraight[0].x-last.x)<1e-9 && Math.abs(leftStraight[0].y-last.y)<1e-9) leftStraight.shift();
+  }
+  return straightRight.concat(arcPts).concat(leftStraight);
+}
+function slotArea(){ const p=slotPolygon(); return p.length>=3? shoelace(p):0; }
+
+// ---------- 内孔键槽（开在轴孔内圆，向外挖入材料的缺口，可多个）----------
+let keyways=[{type:'flat',ang:270,b:8,t:3.5,b1:10,b2:6,t2:3.5}];
+function renderKw(){
+  const box=$('kwList'); box.innerHTML='';
+  keyways.forEach((k,i)=>{
+    const div=document.createElement('div'); div.className='kw-row';
+    const typeSel=`<select data-i="${i}" data-k="__type" style="flex:0 0 auto;min-width:96px">
+        <option value="flat"${k.type==='flat'?' selected':''}>平键槽</option>
+        <option value="trap"${k.type==='trap'?' selected':''}>梯形键槽</option></select>`;
+    const ang=`<input type="number" step="1" value="${k.ang}" data-i="${i}" data-k="ang" placeholder="角度°">`;
+    let dims='';
+    if(k.type==='flat'){
+      dims=`<input type="number" step="0.1" value="${k.b}" data-i="${i}" data-k="b" placeholder="键宽b">
+            <input type="number" step="0.1" value="${k.t}" data-i="${i}" data-k="t" placeholder="键深t">`;
+    } else {
+      dims=`<input type="number" step="0.1" value="${k.b1}" data-i="${i}" data-k="b1" placeholder="上宽b1">
+            <input type="number" step="0.1" value="${k.b2}" data-i="${i}" data-k="b2" placeholder="下宽b2">
+            <input type="number" step="0.1" value="${k.t2}" data-i="${i}" data-k="t2" placeholder="深t">`;
+    }
+    div.innerHTML=typeSel+ang+dims+`<button class="danger btn-sm" data-kwdel="${i}">删</button>`;
+    box.appendChild(div);
+  });
+  box.querySelectorAll('select[data-k="__type"]').forEach(el=>{
+    el.addEventListener('change',e=>{const i=+e.target.dataset.i;keyways[i].type=e.target.value;renderKw();compute();});
+  });
+  box.querySelectorAll('input').forEach(el=>{
+    el.addEventListener('input',e=>{const i=+e.target.dataset.i,k=e.target.dataset.k;keyways[i][k]=parseFloat(e.target.value)||0;compute();});
+  });
+  box.querySelectorAll('[data-kwdel]').forEach(b=>{b.addEventListener('click',e=>{keyways.splice(+e.target.dataset.kwdel,1);renderKw();compute();});});
+}
+$('addKw').addEventListener('click',()=>{keyways.push({type:'flat',ang:270,b:8,t:3.5,b1:10,b2:6,t2:3.5});renderKw();compute();});
+
+function keywaysLocal(){
+  if(!$('kwOn')||!$('kwOn').checked) return [];
+  const arr=[];
+  keyways.forEach(k=>{
+    let poly;
+    if(k.type==='flat'){
+      const b=k.b||0,t=k.t||0;
+      poly=[{x:-b/2,y:0},{x:b/2,y:0},{x:b/2,y:t},{x:-b/2,y:t}];
+    } else {
+      const b1=k.b1||0,b2=k.b2||0,t=k.t2||0;
+      poly=[{x:-b1/2,y:0},{x:b1/2,y:0},{x:b2/2,y:t},{x:-b2/2,y:t}];
+    }
+    arr.push({poly,ang:k.ang||0});
+  });
+  return arr;
+}
+
+// ---------- 主计算 ----------
+function compute(){
+  const D=+$('D').value, d=+$('d').value, t=+$('t').value, N=+$('N').value||1;
+  let rho=+$('rho').value; if($('mat').value!=='custom') rho=+$('mat').value;
+  let K=+$('K').value; if(!K||K<=0) K=1;
+  const Z=+$('Z').value||0;
+
+  const aSlot=slotArea();
+  const aOuter=Math.PI*Math.pow(D/2,2);
+  const aShaft=Math.PI*Math.pow(d/2,2);
+  let aHoles=0; holes.forEach(h=>{ if(h.n>0&&h.d>0) aHoles+=h.n*Math.PI*Math.pow(h.d/2,2); });
+  const kws=keywaysLocal(); let aKeyway=0; kws.forEach(o=>aKeyway+=shoelace(o.poly));
+  const aNet=aOuter-aShaft-Z*aSlot-aHoles-aKeyway;
+  const wSingle=aNet*t*rho/1000;      // g
+  const wTotal=wSingle*N*K;
+
+  $('o_slot').textContent=aSlot.toFixed(2)+' mm²';
+  $('o_kw').textContent=aKeyway.toFixed(2)+' mm²';
+  $('o_net').textContent=aNet.toFixed(2)+' mm²';
+  $('o_single').textContent=wSingle.toFixed(3)+' g';
+  $('o_total').textContent=wTotal.toFixed(2)+' g'+(wTotal>=1000?'  ('+(wTotal/1000).toFixed(3)+' kg)':'');
+
+  let warn='';
+  if(aNet<=0) warn='⚠ 净面积为负，请检查外径/轴孔/槽尺寸是否过大。';
+  else if(aSlot<=0) warn='⚠ 槽面积=0，槽参数可能未填。';
+  $('warn').textContent=warn;
+
+  drawPreview(D,d,Z,aSlot,t);
+}
+
+// ---------- 剖面预览 ----------
+function drawPreview(D,d,Z,aSlot){
+  const size=360, c=size/2, m=18;
+  const scale=(size-2*m)/D;
+  const Ro=D/2, Rs=d/2;
+  let svg=`<svg viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">`;
+  svg+=`<circle cx="${c}" cy="${c}" r="${Ro*scale}" fill="none" stroke="#8a93a3" stroke-width="1.5"/>`;
+  svg+=`<circle cx="${c}" cy="${c}" r="${Rs*scale}" fill="#000" fill-opacity="0.08" stroke="#e24b4a" stroke-width="1"/>`;
+  // 键槽（内孔缺口，向外挖入材料）——支持多个
+  const kws=keywaysLocal();
+  kws.forEach(o=>{
+    const theta=o.ang*Math.PI/180;
+    const ct=Math.cos(theta), st=Math.sin(theta);
+    let kpts='';
+    o.poly.forEach(p=>{
+      const rpt=Rs+p.y;
+      const gx=c + (rpt*ct - p.x*st)*scale;
+      const gy=c + (rpt*st + p.x*ct)*scale;
+      kpts+=`${gx.toFixed(1)},${gy.toFixed(1)} `;
+    });
+    svg+=`<polygon points="${kpts}" fill="#e24b4a" fill-opacity="0.55" stroke="#e24b4a" stroke-width="0.5"/>`;
+  });
+  // 槽
+  const poly=slotPolygon();
+  for(let i=0;i<Z;i++){
+    const th=2*Math.PI*i/Z - Math.PI/2;
+    const ct=Math.cos(th), st=Math.sin(th);
+    let pts='';
+    poly.forEach(p=>{
+      const rpt=Ro-p.y;
+      const gx=c + (rpt*ct - p.x*st)*scale;
+      const gy=c + (rpt*st + p.x*ct)*scale;
+      pts+=`${gx.toFixed(1)},${gy.toFixed(1)} `;
+    });
+    svg+=`<polygon points="${pts}" fill="#e24b4a" fill-opacity="0.55" stroke="#e24b4a" stroke-width="0.5"/>`;
+  }
+  // 自动放置平衡孔（仅示意）
+  holes.forEach(h=>{
+    if(h.n>0&&h.d>0){
+      const rr=(Rs + (Ro - 24))/2 * scale;
+      for(let i=0;i<h.n;i++){
+        const th=2*Math.PI*i/h.n;
+        const hx=c+rr*Math.cos(th), hy=c+rr*Math.sin(th);
+        svg+=`<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="${(h.d/2*scale).toFixed(1)}" fill="none" stroke="#8a93a3" stroke-width="0.8"/>`;
+      }
+    }
+  });
+  svg+=`</svg>`;
+  $('svgBox').innerHTML=svg;
+}
+
+// 绑定
+['D','d','t','N','rho','K','Z','mat','r_w','r_h','t_b0','t_b1','t_h','rd_b0','rd_h0','rd_b','rd_h',
+ 'kwOn'].forEach(id=>{
+  const el=$(id); if(el) el.addEventListener('input',compute);
+});
+$('mat').addEventListener('change',()=>{ if($('mat').value==='custom'){$('rho').value='7.65';} compute(); });
+
+renderSegs(); renderHoles(); renderKw(); compute();
+</script>
+</body>
+</html>
